@@ -23,7 +23,10 @@ struct EmojiArt {
             id: uniqueEmojiId
         ))
     }
-    
+  mutating func removeEmoji(_ emoji: Emoji) {
+    emojis.removeAll(where: { $0.id == emoji.id })
+  }
+
     subscript(_ emojiId: Emoji.ID) -> Emoji? {
         if let index = index(of: emojiId) {
             return emojis[index]

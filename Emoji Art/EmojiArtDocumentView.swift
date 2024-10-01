@@ -39,18 +39,28 @@ struct EmojiArtDocumentView: View {
       }
     }
   }
-
+//selecting deleting emojis also
   @ViewBuilder
   private func documentContents(in geometry: GeometryProxy) -> some View {
     AsyncImage(url: document.background)
       .position(Emoji.Position.zero.in(geometry))
     ForEach(document.emojis) { emoji in
       Text(emoji.string)
+        .scaleEffect(zoom * gestureZoom)
         .font(emoji.font)
         .position(emoji.position.in(geometry))
+        .onTapGesture {
+         isEmojiSelected.toggle()
+        }
+        .onLongPressGesture {
+          if isEmojiSelected {
+            document.removeEmoji(emoji)
+          }
+        }
+        .opacity(isEmojiSelected ? 0.2 : 1)
     }
   }
-
+  @State private var isEmojiSelected = false
   @State private var zoom: CGFloat = 1
   @State private var pan: CGOffset = .zero
 

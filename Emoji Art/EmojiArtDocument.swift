@@ -27,15 +27,18 @@ class EmojiArtDocument: ObservableObject {
     }
     
     // MARK: - Intent(s)
-    
-    func setBackground(_ url: URL?) {
-        emojiArt.background = url
-    }
-    
-    func addEmoji(_ emoji: String, at position: Emoji.Position, size: CGFloat) {
-        emojiArt.addEmoji(emoji, at: position, size: Int(size))
-    }
-    
+
+  func setBackground(_ url: URL?) {
+    emojiArt.background = url
+  }
+
+  func addEmoji(_ emoji: String, at position: Emoji.Position, size: CGFloat) {
+    emojiArt.addEmoji(emoji, at: position, size: Int(size))
+  }
+  func removeEmoji(_ emoji: Emoji) {
+    emojiArt.removeEmoji(emoji)
+  }
+
     func move(_ emoji: Emoji, by offset: CGOffset) {
         let existingPosition = emojiArt[emoji].position
         emojiArt[emoji].position = Emoji.Position(
