@@ -9,22 +9,28 @@
 import SwiftUI
 
 struct EmojiArtDocumentView: View {
-  typealias Emoji = EmojiArt.Emoji
-
   @ObservedObject var document: EmojiArtDocument
-
-  private let paletteEmojiSize: CGFloat = 40
-
+  
+  @State private var zoom: CGFloat = 1
+  @State private var pan: CGSize = .zero
+  
+  @GestureState private var gestureZoom: CGFloat = 1
+  @GestureState private var gesturePan: CGSize = .zero
+  
+  @State private var selectedEmojisIds: Set<EmojiArtDocument.Emoji.ID> = []
+  
+  private let defaultEmojiFontSize: CGFloat = 40
+  
   var body: some View {
     VStack(spacing: 0) {
       documentBody
       PaletteChooser()
-        .font(.system(size: paletteEmojiSize))
+        .font(.system(size: defaultEmojiFontSize))
         .padding(.horizontal)
         .scrollIndicators(.hidden)
     }
   }
-
+  
   private var documentBody: some View {
     GeometryReader { geometry in
       ZStack {
@@ -39,34 +45,56 @@ struct EmojiArtDocumentView: View {
       }
     }
   }
-//selecting deleting emojis also
+  
   @ViewBuilder
   private func documentContents(in geometry: GeometryProxy) -> some View {
     AsyncImage(url: document.background)
-      .position(Emoji.Position.zero.in(geometry))
+      .position(EmojiArtDocument.Emoji.Position.zero.in(geometry))
+    
     ForEach(document.emojis) { emoji in
       Text(emoji.string)
-        .scaleEffect(zoom * gestureZoom)
         .font(emoji.font)
         .position(emoji.position.in(geometry))
+        .gesture(emojiDragGesture(for: emoji).simultaneously(with: emojiMagnificationGesture(for: emoji)))
+      
         .onTapGesture {
-         isEmojiSelected.toggle()
+          toggleEmojiSelection(emoji)
         }
         .onLongPressGesture {
-          if isEmojiSelected {
+          if isEmojiSelected(emoji) {
             document.removeEmoji(emoji)
           }
         }
-        .opacity(isEmojiSelected ? 0.2 : 1)
+        .opacity(isEmojiSelected(emoji) ? 0.5 : 1)
     }
   }
-  @State private var isEmojiSelected = false
-  @State private var zoom: CGFloat = 1
-  @State private var pan: CGOffset = .zero
-
-  @GestureState private var gestureZoom: CGFloat = 1
-  @GestureState private var gesturePan: CGOffset = .zero
-
+  
+  private func isEmojiSelected(_ emoji: EmojiArtDocument.Emoji) -> Bool {
+    selectedEmojisIds.contains(emoji.id)
+  }
+  
+  private func toggleEmojiSelection(_ emoji: EmojiArtDocument.Emoji) {
+    if selectedEmojisIds.contains(emoji.id) {
+      selectedEmojisIds.remove(emoji.id)
+    } else {
+      selectedEmojisIds.insert(emoji.id)
+    }
+  }
+  
+  private func emojiDragGesture(for emoji: EmojiArtDocument.Emoji) -> some Gesture {
+    DragGesture()
+      .onChanged { value in
+        document.move(emoji, by: value.translation)
+      }
+  }
+  
+  private func emojiMagnificationGesture(for emoji: EmojiArtDocument.Emoji) -> some Gesture {
+    MagnificationGesture()
+      .onChanged { scale in
+        document.resize(emoji, by: scale)
+      }
+  }
+  
   private var zoomGesture: some Gesture {
     MagnificationGesture()
       .updating($gestureZoom) { inMotionPinchScale, gestureZoom, _ in
@@ -76,7 +104,7 @@ struct EmojiArtDocumentView: View {
         zoom *= endingPinchScale
       }
   }
-
+  
   private var panGesture: some Gesture {
     DragGesture()
       .updating($gesturePan) { inMotionDragGestureValue, gesturePan, _ in
@@ -86,7 +114,7 @@ struct EmojiArtDocumentView: View {
         pan += endingDragGestureValue.translation
       }
   }
-
+  
   private func drop(_ sturldatas: [Sturldata], at location: CGPoint, in geometry: GeometryProxy) -> Bool {
     for sturldata in sturldatas {
       switch sturldata {
@@ -97,7 +125,7 @@ struct EmojiArtDocumentView: View {
         document.addEmoji(
           emoji,
           at: emojiPosition(at: location, in: geometry),
-          size: paletteEmojiSize / zoom
+          size: defaultEmojiFontSize / zoom
         )
         return true
       default:
@@ -107,9 +135,9 @@ struct EmojiArtDocumentView: View {
     return false
   }
 
-  private func emojiPosition(at location: CGPoint, in geometry: GeometryProxy) -> Emoji.Position {
+  private func emojiPosition(at location: CGPoint, in geometry: GeometryProxy) -> EmojiArtDocument.Emoji.Position {
     let center = geometry.frame(in: .local).center
-    return Emoji.Position(
+    return EmojiArtDocument.Emoji.Position(
       x: Int((location.x - center.x - pan.width) / zoom),
       y: Int(-(location.y - center.y - pan.height) / zoom)
     )
